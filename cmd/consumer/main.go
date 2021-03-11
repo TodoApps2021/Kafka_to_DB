@@ -2,19 +2,20 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/TodoApps2021/Kafka_to_DB/pkg/kafka/consumer"
 	options "github.com/TodoApps2021/Kafka_to_DB/pkg/options/kafka"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 func main() {
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
 	config := options.ReadKafkaConsumerEnv()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -33,7 +34,7 @@ func main() {
 
 	// wait while services work
 	wg.Wait()
-	log.Info("end")
+	log.Print("end")
 }
 
 func setupGracefulShutdown(stop func()) {
@@ -49,7 +50,7 @@ func setupGracefulShutdown(stop func()) {
 type Handler struct {
 }
 
-func (h *Handler) Handle(ctx context.Context, key, value []byte, timestamp time.Time) error {
-	log.Printf("key:%s, value:%s", string(key), string(value))
+func (h *Handler) Handle(ctx context.Context, key, value []byte, timestamp time.Time, p kafka.TopicPartition) error {
+	log.Printf("key: <%s>, value: <%s>, partition: %s", string(key), string(value), p.String())
 	return nil
 }

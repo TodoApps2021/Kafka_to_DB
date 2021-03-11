@@ -1,2 +1,10 @@
 kafka:
   url: "localhost:9092"
+  consumer:
+    group_id: "todo_commands"
+    session_timeout_ms": 6000
+    auto_offset_reset":  "earliest"
+    enable_auto_commit: false
+
+db:
+  url: "postgres://postgres:postgres@localhost:5432/?sslmode=disable"

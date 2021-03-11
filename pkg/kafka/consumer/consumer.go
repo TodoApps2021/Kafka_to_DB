@@ -21,7 +21,7 @@ type Config struct {
 
 type Handler interface {
 	// If 'Handle' returns an error, a message will not be committed.
-	Handle(ctx context.Context, key, value []byte, timestamp time.Time) error
+	Handle(ctx context.Context, key, value []byte, timestamp time.Time, p kafka.TopicPartition) error
 }
 
 type Consumer struct {
@@ -35,10 +35,10 @@ type Consumer struct {
 
 func New(config Config, topics []string, handler Handler) (*Consumer, error) {
 	configMap := kafka.ConfigMap{
-		"bootstrap.servers":  config.BootstrapServers,
-		"group.id":           config.GroupID,
-		"session.timeout.ms": config.SessionTimeoutMs,
-		"auto.offset.reset":  config.AutoOffsetReset,
+		"bootstrap.servers":  "localhost:9092",
+		"group.id":           "todo_api",
+		"session.timeout.ms": 6000,
+		"auto.offset.reset":  "earliest",
 		"enable.auto.commit": false,
 	}
 
@@ -49,10 +49,10 @@ func New(config Config, topics []string, handler Handler) (*Consumer, error) {
 
 	return &Consumer{
 		consumer:      consumer,
-		topics:        topics,
+		topics:        []string{"create", "update", "delete"},
 		handler:       handler,
-		name:          config.Name,
-		pollTimeoutMs: config.PollTimeoutMs,
+		name:          "hello",
+		pollTimeoutMs: 300,
 	}, nil
 }
 
@@ -86,7 +86,7 @@ func (c *Consumer) Poll(ctx context.Context) {
 			}
 			switch e := ev.(type) {
 			case *kafka.Message:
-				err := c.handler.Handle(ctx, e.Key, e.Value, e.Timestamp)
+				err := c.handler.Handle(ctx, e.Key, e.Value, e.Timestamp, e.TopicPartition)
 				if err != nil {
 					log.Errorf("kafka consumer '%s': failed to handle message: %v", c.name, err)
 					continue
