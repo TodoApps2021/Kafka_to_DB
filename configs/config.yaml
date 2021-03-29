@@ -1,9 +1,10 @@
 kafka:
   url: "localhost:9092"
   consumer:
+    topics: ["auth", "todo_list", "todo_item"]
     group_id: "todo_commands"
-    session_timeout_ms": 6000
-    auto_offset_reset":  "earliest"
+    session_timeout_ms: 6000
+    auto_offset_reset: "earliest"
     enable_auto_commit: false
 
 db:

@@ -4,24 +4,23 @@ import (
 	"context"
 	"errors"
 	"sync"
-	"time"
 
+	"github.com/TodoApps2021/Kafka_to_DB/pkg/options"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	log "github.com/sirupsen/logrus"
 )
 
-type Config struct {
-	PollTimeoutMs    int
-	Name             string
-	BootstrapServers string
-	GroupID          string
-	SessionTimeoutMs string
-	AutoOffsetReset  string // earliest, latest
-}
+// var (
+// 	commands = map[string]func() error{
+// 		"auth":  func() error { return nil },
+// 		"lists": func() error { return nil },
+// 		"items": func() error { return nil },
+// 	}
+// )
 
 type Handler interface {
 	// If 'Handle' returns an error, a message will not be committed.
-	Handle(ctx context.Context, key, value []byte, timestamp time.Time, p kafka.TopicPartition) error
+	Handle(ctx context.Context, key, value []byte, topic string, partition int32) error
 }
 
 type Consumer struct {
@@ -33,13 +32,13 @@ type Consumer struct {
 	pollTimeoutMs int
 }
 
-func New(config Config, topics []string, handler Handler) (*Consumer, error) {
+func New(config *options.ConfigConsumer, topics []string, handler Handler) (*Consumer, error) {
 	configMap := kafka.ConfigMap{
-		"bootstrap.servers":  "localhost:9092",
-		"group.id":           "todo_api",
-		"session.timeout.ms": 6000,
-		"auto.offset.reset":  "earliest",
-		"enable.auto.commit": false,
+		"bootstrap.servers":  config.BootstrapServers,
+		"group.id":           config.GroupId,
+		"session.timeout.ms": config.SessionTimeoutMs,
+		"auto.offset.reset":  config.AutoOffsetReset,
+		"enable.auto.commit": config.EnableAutoCommit,
 	}
 
 	consumer, err := kafka.NewConsumer(&configMap)
@@ -49,9 +48,9 @@ func New(config Config, topics []string, handler Handler) (*Consumer, error) {
 
 	return &Consumer{
 		consumer:      consumer,
-		topics:        []string{"create", "update", "delete"},
+		topics:        topics,
 		handler:       handler,
-		name:          "hello",
+		name:          "todo_app",
 		pollTimeoutMs: 300,
 	}, nil
 }
@@ -84,9 +83,13 @@ func (c *Consumer) Poll(ctx context.Context) {
 			if ev == nil {
 				continue
 			}
+
 			switch e := ev.(type) {
 			case *kafka.Message:
-				err := c.handler.Handle(ctx, e.Key, e.Value, e.Timestamp, e.TopicPartition)
+				topic := e.TopicPartition.Topic
+				partition := e.TopicPartition.Partition
+
+				err := c.handler.Handle(ctx, e.Key, e.Value, *topic, partition)
 				if err != nil {
 					log.Errorf("kafka consumer '%s': failed to handle message: %v", c.name, err)
 					continue

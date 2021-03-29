@@ -7,24 +7,41 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
+	"github.com/TodoApps2021/Kafka_to_DB/pkg/handler"
 	"github.com/TodoApps2021/Kafka_to_DB/pkg/kafka/consumer"
-	options "github.com/TodoApps2021/Kafka_to_DB/pkg/options/kafka"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/TodoApps2021/Kafka_to_DB/pkg/options"
+	"github.com/TodoApps2021/Kafka_to_DB/pkg/repository"
+	"github.com/spf13/viper"
 )
+
+func initConfig() error {
+	viper.AddConfigPath("configs")
+	viper.SetConfigName("config")
+	return viper.ReadInConfig()
+}
 
 func main() {
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
-	config := options.ReadKafkaConsumerEnv()
+	if err := initConfig(); err != nil {
+		log.Fatal("Error init")
+	}
 
+	config := options.ReadFromYAML()
 	ctx, cancel := context.WithCancel(context.Background())
 	setupGracefulShutdown(cancel)
 	wg := new(sync.WaitGroup)
 
-	handler := &Handler{}
+	pool, err := repository.NewPostgresDB(repository.Config{
+		DB_URL: viper.GetString("db.url"),
+	})
+	if err != nil {
+		log.Fatal("Error init pool DB")
+	}
 
-	client, err := consumer.New(config.Consumer, []string{config.TopicName}, handler)
+	handler := &handler.Handler{Repo: repository.NewRepository(pool)}
+
+	client, err := consumer.New(config, viper.GetStringSlice("kafka.consumer.topics"), handler)
 	if err != nil {
 		log.Print("kafka consumer init error:", err.Error())
 		os.Exit(1)
@@ -45,12 +62,4 @@ func setupGracefulShutdown(stop func()) {
 		log.Println("got Interrupt signal")
 		stop()
 	}()
-}
-
-type Handler struct {
-}
-
-func (h *Handler) Handle(ctx context.Context, key, value []byte, timestamp time.Time, p kafka.TopicPartition) error {
-	log.Printf("key: <%s>, value: <%s>, partition: %s", string(key), string(value), p.String())
-	return nil
 }

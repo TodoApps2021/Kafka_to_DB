@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
+	"github.com/TodoApps2021/Kafka_to_DB/pkg/message"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/spf13/viper"
 )
@@ -29,14 +32,28 @@ func main() {
 
 	fmt.Printf("Created Producer %v\n", p)
 
+	user := message.User{
+		Name:     "Vlad",
+		Username: "Vlad",
+		Password: "Vlad",
+	}
+
 	// Optional delivery channel, if not specified the Producer object's
 	// .Events channel is used.
 	deliveryChan := make(chan kafka.Event)
-	topic := "create"
-	value := "Hello Go!"
+	topic := "accounts"
+	text := map[string]interface{}{
+		"status": "create",
+		"item":   user,
+	}
+	value, err := json.Marshal(text)
+	if err != nil {
+		log.Print(err.Error())
+	}
 	err = p.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: 0},
 		Value:          []byte(value),
+		Key:            []byte(fmt.Sprint(time.Now().UTC())),
 		// Headers:        []kafka.Header{{Key: "myTestHeader", Value: []byte("header values are binary")}},
 	}, deliveryChan)
 	log.Print(err)
