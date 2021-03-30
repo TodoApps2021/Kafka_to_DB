@@ -13,22 +13,6 @@ type Handler struct {
 	Repo *repository.Repository
 }
 
-// type Authorization interface {
-// 	CreateUser(user message.User) error
-// }
-
-// type TodoList interface {
-// 	Create(userId int, list message.TodoList) error
-// 	Delete(userId, listId int) error
-// 	Update(userId, listId int, input message.UpdateList) error
-// }
-
-// type TodoItem interface {
-// 	Create(listId int, item message.TodoItem) error
-// 	Delete(userId, itemId int) error
-// 	Update(userId, itemId int, input message.UpdateItem) error
-// }
-
 func (h *Handler) Handle(ctx context.Context, key, value []byte, topic string, partition int32) error {
 	log.Printf("key: <%s>, value: <%s>", string(key), string(value))
 
@@ -56,7 +40,7 @@ func (h *Handler) Handle(ctx context.Context, key, value []byte, topic string, p
 				return err
 			}
 
-			return h.DeleteList(input.ListId, input.UserId)
+			return h.DeleteList(input.UserId, input.ListId)
 		} else if partition == 2 {
 			var input message.UpdateList
 
